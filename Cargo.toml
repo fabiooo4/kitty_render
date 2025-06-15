@@ -8,3 +8,4 @@ nix = {version = "0.30.1", features = ["ioctl"]}
 clearscreen = "4.0.1"
 ctrlc = "3.4.7"
 kitty_image = "0.1.0"
+rand = "0.9.1"

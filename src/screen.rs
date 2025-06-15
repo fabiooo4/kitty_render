@@ -5,10 +5,14 @@ use nix::{
     ioctl_read_bad,
     libc::{self, winsize},
 };
+use rand::Rng;
+
+use crate::{model::Model, utils::Vector2};
 
 pub struct Screen {
     pub width: usize,
     pub height: usize,
+    img_buf: Vec<Vec<Color>>,
     action: Action,
 }
 
@@ -32,6 +36,7 @@ impl Screen {
         Screen {
             width,
             height,
+            img_buf: vec![vec![Color::try_from("#000000").unwrap(); width]; height],
             action,
         }
     }
@@ -44,14 +49,14 @@ impl Screen {
     }
 
     /// Renders to a writer
-    pub fn render_to<W>(&self, img_buf: &mut Vec<Vec<Color>>, writer: &mut W)
+    pub fn render_to<W>(&mut self, writer: &mut W)
     where
         W: Write,
     {
         // Add the payload to the command
         let mut command = Command::new(self.action);
-        img_buf.reverse();
-        command.payload = buf_to_payload(img_buf);
+        self.img_buf.reverse();
+        command.payload = buf_to_payload(&self.img_buf);
 
         // Wrap the command in escape codes
         let command = WrappedCommand::new(command);
@@ -60,12 +65,12 @@ impl Screen {
     }
 
     /// Renders to stdout
-    pub fn render(&self, img_buf: &mut Vec<Vec<Color>>) {
-        self.render_to(img_buf, &mut stdout());
+    pub fn render(&mut self) {
+        self.render_to(&mut stdout());
     }
 
     /// Scales 1 pixel to be `scale` times larger
-    pub fn render_scaled(&mut self, img_buf: &[Vec<Color>], scale: usize) {
+    pub fn render_scaled(&mut self, scale: usize) {
         let scaled_width = self.width * scale;
         let scaled_height = self.height * scale;
 
@@ -86,18 +91,35 @@ impl Screen {
         let mut scaled_buf: Vec<Vec<Color>> =
             vec![vec![Color::new(0, 0, 0, 0); scaled_width]; scaled_height];
 
-        (0..img_buf.len()).for_each(|y| {
-            (0..img_buf[0].len()).for_each(|x| {
+        (0..self.img_buf.len()).for_each(|y| {
+            (0..self.img_buf[0].len()).for_each(|x| {
                 (0..scale).for_each(|y_offset| {
                     (0..scale).for_each(|x_offset| {
                         scaled_buf[(y * scale).saturating_add(y_offset)]
-                            [(x * scale).saturating_add(x_offset)] = img_buf[y][x];
+                            [(x * scale).saturating_add(x_offset)] = self.img_buf[y][x];
                     });
                 });
             });
         });
 
-        self.render(&mut scaled_buf);
+        self.render();
+    }
+
+    pub fn add_model(&mut self, model: Model) {
+        todo!("Add model rendering")
+        /* (0..self.height).for_each(|y| {
+            (0..self.width).for_each(|x| {
+                for (color_idx, triangle) in model.points.windows(3).enumerate() {
+                    if Vector2::new(x as f64, y as f64).is_in_triangle(
+                        triangle[0],
+                        triangle[1],
+                        triangle[2],
+                    ) {
+                        self.img_buf[y][x] = model.face_colors[color_idx];
+                    }
+                }
+            });
+        }); */
     }
 }
 
@@ -149,6 +171,17 @@ impl Color {
             blue,
             alpha,
         }
+    }
+
+    pub fn random() -> Self {
+        let mut rng = rand::rng();
+
+        Color::new(
+            rng.random::<u8>(),
+            rng.random::<u8>(),
+            rng.random::<u8>(),
+            0xff,
+        )
     }
 }
 
