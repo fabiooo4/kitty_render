@@ -87,7 +87,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kitty_rendering"
+name = "kitty_render"
 version = "0.1.0"
 dependencies = [
  "clearscreen",
