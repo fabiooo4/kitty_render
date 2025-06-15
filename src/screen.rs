@@ -21,6 +21,7 @@ impl Screen {
                 medium: Medium::Direct,
                 width: width as u32,
                 height: height as u32,
+                compression: false,
                 ..Default::default()
             },
             kitty_image::ActionPut {
@@ -43,12 +44,13 @@ impl Screen {
     }
 
     /// Renders to a writer
-    pub fn render_to<W>(&self, img_buf: &Vec<Vec<Color>>, writer: &mut W)
+    pub fn render_to<W>(&self, img_buf: &mut Vec<Vec<Color>>, writer: &mut W)
     where
         W: Write,
     {
         // Add the payload to the command
         let mut command = Command::new(self.action);
+        img_buf.reverse();
         command.payload = buf_to_payload(img_buf);
 
         // Wrap the command in escape codes
@@ -58,8 +60,44 @@ impl Screen {
     }
 
     /// Renders to stdout
-    pub fn render(&self, img_buf: &Vec<Vec<Color>>) {
+    pub fn render(&self, img_buf: &mut Vec<Vec<Color>>) {
         self.render_to(img_buf, &mut stdout());
+    }
+
+    /// Scales 1 pixel to be `scale` times larger
+    pub fn render_scaled(&mut self, img_buf: &[Vec<Color>], scale: usize) {
+        let scaled_width = self.width * scale;
+        let scaled_height = self.height * scale;
+
+        self.action = Action::TransmitAndDisplay(
+            ActionTransmission {
+                format: Format::Rgba32,
+                medium: Medium::Direct,
+                width: scaled_width as u32,
+                height: scaled_height as u32,
+                compression: false,
+                ..Default::default()
+            },
+            kitty_image::ActionPut {
+                ..Default::default()
+            },
+        );
+
+        let mut scaled_buf: Vec<Vec<Color>> =
+            vec![vec![Color::new(0, 0, 0, 0); scaled_width]; scaled_height];
+
+        (0..img_buf.len()).for_each(|y| {
+            (0..img_buf[0].len()).for_each(|x| {
+                (0..scale).for_each(|y_offset| {
+                    (0..scale).for_each(|x_offset| {
+                        scaled_buf[(y * scale).saturating_add(y_offset)]
+                            [(x * scale).saturating_add(x_offset)] = img_buf[y][x];
+                    });
+                });
+            });
+        });
+
+        self.render(&mut scaled_buf);
     }
 }
 
