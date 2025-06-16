@@ -1,5 +1,4 @@
 use std::{fs::File, io::Read};
-
 use crate::{screen::Color, utils::Vector3};
 
 pub struct Model {
@@ -30,9 +29,8 @@ fn parse_obj(content: &str) -> Vec<Vector3> {
     let mut triangle_points: Vec<Vector3> = Vec::new();
 
     content.trim().lines().for_each(|line| {
-        if line.trim().starts_with("v") {
-            let vec3: Vec<f64> = line
-                .trim()
+        if line.trim().starts_with("v ") {
+            let vec3: Vec<f64> = line.trim()[2..]
                 .split(' ')
                 .filter_map(|val| val.parse().ok())
                 .collect();
@@ -40,7 +38,7 @@ fn parse_obj(content: &str) -> Vec<Vector3> {
             vertices.push(Vector3::new(vec3[0], vec3[1], vec3[2]));
         }
 
-        if line.trim().starts_with("f") {
+        if line.trim().starts_with("f ") {
             let face_groups: Vec<&str> = line.trim()[2..].split(' ').collect();
 
             for group in face_groups {

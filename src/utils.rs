@@ -1,3 +1,5 @@
+use std::ops::Add;
+use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
 
@@ -63,6 +65,22 @@ impl Mul for Vector2 {
     }
 }
 
+impl Mul<f64> for Vector2 {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Vector2::new(self.x * rhs, self.y * rhs)
+    }
+}
+
+impl Div<f64> for Vector2 {
+    type Output = Self;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        Vector2::new(self.x / rhs, self.y / rhs)
+    }
+}
+
 impl Sub for Vector2 {
     type Output = Vector2;
 
@@ -71,11 +89,19 @@ impl Sub for Vector2 {
     }
 }
 
+impl Add for Vector2 {
+    type Output = Vector2;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Vector2::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Vector3 {
-    x: f64,
-    y: f64,
-    z: f64,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 
 impl Vector3 {
@@ -98,11 +124,35 @@ impl Mul for Vector3 {
     }
 }
 
+impl Mul<f64> for Vector3 {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Vector3::new(self.x * rhs, self.y * rhs, self.z * rhs)
+    }
+}
+
+impl Div<f64> for Vector3 {
+    type Output = Self;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        Vector3::new(self.x / rhs, self.y / rhs, self.z / rhs)
+    }
+}
+
 impl Sub for Vector3 {
     type Output = Vector3;
 
     fn sub(self, rhs: Self) -> Self::Output {
         Vector3::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+    }
+}
+
+impl Add for Vector3 {
+    type Output = Vector3;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Vector3::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
     }
 }
 
