@@ -29,7 +29,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::vector2::Vector2;
+    use crate::vector::vector2::Vector2;
 
     use super::*;
 

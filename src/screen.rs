@@ -12,7 +12,7 @@ use rand::Rng;
 
 use crate::{
     model::Model,
-    utils::{vector2::Vector2, vector3::Vector3},
+    vector::{vector2::Vector2, vector3::Vector3},
 };
 
 pub struct Screen {

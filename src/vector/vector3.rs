@@ -1,4 +1,4 @@
-use crate::utils::Vector;
+use crate::vector::Vector;
 
 use std::clone::Clone;
 use std::default::Default;

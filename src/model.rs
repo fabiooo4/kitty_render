@@ -1,4 +1,4 @@
-use crate::{screen::Color, utils::vector3::Vector3};
+use crate::{screen::Color, vector::vector3::Vector3};
 use std::{fs::File, io::Read};
 
 pub struct Model {

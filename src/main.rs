@@ -1,6 +1,6 @@
 mod model;
 mod screen;
-mod utils;
+mod vector;
 
 use model::{Model, load_obj};
 use screen::{Color, Screen};
