@@ -12,13 +12,13 @@ use rand::Rng;
 
 use crate::{
     model::Model,
-    utils::{Vector2, Vector3},
+    utils::{Vector3, vector2::Vector2},
 };
 
 pub struct Screen {
     pub width: usize,
     pub height: usize,
-    pub size: Vector2,
+    pub size: Vector2<f64>,
     scale: usize,
     img_buf: Vec<Vec<Color>>,
     action: Action,
@@ -135,9 +135,11 @@ impl Screen {
             // Render only the pixels contained in the triangle
             for y in block_start.1..block_end.1 {
                 for x in block_start.0..block_end.0 {
-                    if !Vector2::new(x as f64, y as f64)
-                        .is_in_triangle(triangle.0, triangle.1, triangle.2)
-                    {
+                    if !Vector2::new(x as f64, y as f64).is_in_triangle(
+                        &triangle.0,
+                        &triangle.1,
+                        &triangle.2,
+                    ) {
                         continue;
                     }
 
@@ -150,7 +152,7 @@ impl Screen {
     }
 
     /// Transform vertex position to screen space (pixel coordinates)
-    fn world_to_screen(&self, vertex: Vector3) -> Vector2 {
+    fn world_to_screen(&self, vertex: Vector3) -> Vector2<f64> {
         let screen_height_world = 5.;
         let pixels_per_world_unit = self.size.y / screen_height_world;
 
