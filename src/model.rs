@@ -1,13 +1,13 @@
+use crate::{screen::Color, utils::vector3::Vector3};
 use std::{fs::File, io::Read};
-use crate::{screen::Color, utils::Vector3};
 
 pub struct Model {
-    pub points: Vec<Vector3>,
+    pub points: Vec<Vector3<f64>>,
     pub face_colors: Vec<Color>,
 }
 
 impl Model {
-    pub fn new(points: Vec<Vector3>, face_colors: Vec<Color>) -> Self {
+    pub fn new(points: Vec<Vector3<f64>>, face_colors: Vec<Color>) -> Self {
         Model {
             points,
             face_colors,
@@ -15,7 +15,7 @@ impl Model {
     }
 }
 
-pub fn load_obj(path: &str) -> Vec<Vector3> {
+pub fn load_obj(path: &str) -> Vec<Vector3<f64>> {
     let mut file = File::open(path).expect("Failed to open file");
 
     let mut content = String::new();
@@ -24,9 +24,9 @@ pub fn load_obj(path: &str) -> Vec<Vector3> {
     parse_obj(&content)
 }
 
-fn parse_obj(content: &str) -> Vec<Vector3> {
-    let mut vertices: Vec<Vector3> = Vec::new();
-    let mut triangle_points: Vec<Vector3> = Vec::new();
+fn parse_obj(content: &str) -> Vec<Vector3<f64>> {
+    let mut vertices: Vec<Vector3<f64>> = Vec::new();
+    let mut triangle_points: Vec<Vector3<f64>> = Vec::new();
 
     content.trim().lines().for_each(|line| {
         if line.trim().starts_with("v ") {

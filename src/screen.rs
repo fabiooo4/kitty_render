@@ -12,7 +12,7 @@ use rand::Rng;
 
 use crate::{
     model::Model,
-    utils::{Vector3, vector2::Vector2},
+    utils::{vector2::Vector2, vector3::Vector3},
 };
 
 pub struct Screen {
@@ -20,7 +20,7 @@ pub struct Screen {
     pub height: usize,
     pub size: Vector2<f64>,
     scale: usize,
-    img_buf: Vec<Vec<Color>>,
+    frame_buf: Vec<Vec<Color>>,
     action: Action,
 }
 
@@ -46,7 +46,7 @@ impl Screen {
             height,
             size: Vector2::new(width as f64, height as f64),
             scale: 1,
-            img_buf: vec![vec![Color::try_from("#000000").unwrap(); width]; height],
+            frame_buf: vec![vec![Color::try_from("#000000").unwrap(); width]; height],
             action,
         }
     }
@@ -65,7 +65,7 @@ impl Screen {
     {
         // Add the payload to the command
         let mut command = Command::new(self.action);
-        command.payload = buf_to_payload(&self.img_buf);
+        command.payload = buf_to_payload(&self.frame_buf);
 
         // Wrap the command in escape codes
         let command = WrappedCommand::new(command);
@@ -101,7 +101,8 @@ impl Screen {
         );
 
         // Scale image buffer
-        self.img_buf = vec![vec![Color::try_from("#000000").unwrap(); scaled_width]; scaled_height];
+        self.frame_buf =
+            vec![vec![Color::try_from("#000000").unwrap(); scaled_width]; scaled_height];
     }
 
     pub fn render(&mut self, model: &Model) {
@@ -144,7 +145,7 @@ impl Screen {
                     }
 
                     render_scaled((x, y), self.scale, |scaled_x, scaled_y| {
-                        self.img_buf[scaled_y][scaled_x] = model.face_colors[color_idx / 3];
+                        self.frame_buf[scaled_y][scaled_x] = model.face_colors[color_idx / 3];
                     });
                 }
             }
@@ -152,7 +153,7 @@ impl Screen {
     }
 
     /// Transform vertex position to screen space (pixel coordinates)
-    fn world_to_screen(&self, vertex: Vector3) -> Vector2<f64> {
+    fn world_to_screen(&self, vertex: Vector3<f64>) -> Vector2<f64> {
         let screen_height_world = 5.;
         let pixels_per_world_unit = self.size.y / screen_height_world;
 
