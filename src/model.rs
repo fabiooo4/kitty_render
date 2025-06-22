@@ -15,13 +15,12 @@ impl Model {
     }
 }
 
-pub fn load_obj(path: &str) -> Vec<Vector3<f64>> {
-    let mut file = File::open(path).expect("Failed to open file");
+pub fn load_obj(path: &str) -> std::io::Result<Vec<Vector3<f64>>> {
+    let mut file = File::open(path)?;
 
     let mut content = String::new();
-    file.read_to_string(&mut content)
-        .expect("Failed to read file");
-    parse_obj(&content)
+    file.read_to_string(&mut content)?;
+    Ok(parse_obj(&content))
 }
 
 fn parse_obj(content: &str) -> Vec<Vector3<f64>> {

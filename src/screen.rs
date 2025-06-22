@@ -12,7 +12,7 @@ use rand::Rng;
 
 use crate::{
     model::Model,
-    vector::{vector2::Vector2, vector3::Vector3},
+    vector::{transform::Transform, vector2::Vector2, vector3::Vector3},
 };
 
 pub struct Screen {
@@ -59,7 +59,7 @@ impl Screen {
     }
 
     /// Renders to a writer
-    pub fn display_to<W>(&mut self, writer: &mut W)
+    pub fn draw_to<W>(&mut self, writer: &mut W)
     where
         W: Write,
     {
@@ -71,11 +71,13 @@ impl Screen {
         let command = WrappedCommand::new(command);
 
         command.send_chunked(writer).unwrap();
+
+        self.clear_frame_buf();
     }
 
     /// Renders to stdout
-    pub fn display(&mut self) {
-        self.display_to(&mut stdout());
+    pub fn draw(&mut self) {
+        self.draw_to(&mut stdout());
     }
 
     /// Scales 1 pixel to be `scale` times larger
@@ -105,12 +107,12 @@ impl Screen {
             vec![vec![Color::try_from("#000000").unwrap(); scaled_width]; scaled_height];
     }
 
-    pub fn render(&mut self, model: &Model) {
+    pub fn render(&mut self, model: &Model, transform: &Transform) {
         for (color_idx, triangle) in model.points.windows(3).enumerate() {
             let triangle = (
-                self.world_to_screen(triangle[0]),
-                self.world_to_screen(triangle[1]),
-                self.world_to_screen(triangle[2]),
+                self.vertex_to_screen(triangle[0], transform),
+                self.vertex_to_screen(triangle[1], transform),
+                self.vertex_to_screen(triangle[2], transform),
             );
 
             // Min and max bounds for a triangle
@@ -145,7 +147,7 @@ impl Screen {
                     }
 
                     render_scaled((x, y), self.scale, |scaled_x, scaled_y| {
-                        self.frame_buf[scaled_y][scaled_x] = model.face_colors[color_idx / 3];
+                        self.frame_buf[scaled_y][scaled_x] = model.face_colors[color_idx];
                     });
                 }
             }
@@ -153,12 +155,22 @@ impl Screen {
     }
 
     /// Transform vertex position to screen space (pixel coordinates)
-    fn world_to_screen(&self, vertex: Vector3<f64>) -> Vector2<f64> {
+    fn vertex_to_screen(&self, vertex: Vector3<f64>, transform: &Transform) -> Vector2<f64> {
+        let vertex = transform.vertex_to_world(vertex);
+
         let screen_height_world = 5.;
         let pixels_per_world_unit = self.size.y / screen_height_world;
 
         let pixel_offset = Vector2::new(vertex.x, vertex.y) * pixels_per_world_unit;
         self.size / 2. + pixel_offset
+    }
+
+    fn clear_frame_buf(&mut self) {
+        for y in self.frame_buf.iter_mut() {
+            for x in y {
+                *x = Color::try_from("#000000").unwrap();
+            }
+        }
     }
 }
 
@@ -175,10 +187,10 @@ fn render_scaled<T: FnMut(usize, usize)>(point: (usize, usize), scale: usize, mu
 }
 
 /// Converts a color matrix to a byte array and returns an owned payload
-fn buf_to_payload(img_buf: &[Vec<Color>]) -> Cow<[u8]> {
-    let mut payload: Vec<u8> = Vec::with_capacity(4 * img_buf.len());
+fn buf_to_payload(frame_buf: &[Vec<Color>]) -> Cow<[u8]> {
+    let mut payload: Vec<u8> = Vec::with_capacity(4 * frame_buf.len());
 
-    for row in img_buf.iter().rev() {
+    for row in frame_buf.iter().rev() {
         for color in row {
             payload.push(color.red);
             payload.push(color.green);

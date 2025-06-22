@@ -12,6 +12,7 @@ use std::{
     thread::sleep,
     time::Duration,
 };
+use vector::transform::Transform;
 
 fn main() {
     // Setup CTRL + C handler
@@ -24,29 +25,34 @@ fn main() {
 
     // Init -----------------------------
 
-    let mut screen = Screen::new(64, 64);
+    let mut screen = Screen::new(2 * 64, 2 * 64);
     screen.scale(10);
 
     // Load cube model
-    let cube_points = load_obj("models/cube.obj");
+    let model_points = load_obj("models/cube.obj").expect("Failed to read model data");
 
     // Assign a random color to each triangle
-    let triangle_colors: Vec<Color> = (0..cube_points.len() / 3).map(|_| Color::random()).collect();
+    let triangle_colors: Vec<Color> = (0..model_points.windows(3).count())
+        .map(|_| Color::random())
+        .collect();
 
-    let cube = Model::new(cube_points, triangle_colors);
+    let cube = Model::new(model_points, triangle_colors);
+
+    let mut transform = Transform::new(0.);
 
     // Init -----------------------------
 
     // Loop -----------------------------
-
     clearscreen::clear().unwrap();
     while running.load(Ordering::SeqCst) {
-        screen.render(&cube);
+        screen.render(&cube, &transform);
 
-        screen.display();
-        sleep(Duration::from_millis(100));
+        screen.draw();
+
+        transform.yaw -= 0.1;
+
+        sleep(Duration::from_millis(3));
     }
     clearscreen::clear().unwrap();
-
     // Loop -----------------------------
 }

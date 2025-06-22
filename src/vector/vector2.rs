@@ -43,14 +43,14 @@ where
         let right_of_bc = self.point_on_right_side_of_line(b, c);
         let right_of_ca = self.point_on_right_side_of_line(c, a);
 
-        right_of_ab == right_of_bc && right_of_bc == right_of_ca
+        right_of_ab && right_of_bc && right_of_ca
     }
 
     fn perpendicular(&self) -> Vector2<T>
     where
         T: Neg<Output = T> + Clone,
     {
-        Vector2::new(self.y.clone(), -self.x.clone())
+        Vector2::new(-self.y.clone(), self.x.clone())
     }
 }
 
