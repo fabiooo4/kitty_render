@@ -7,7 +7,7 @@ use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct Vector3<T>
 where
     T: Clone,
