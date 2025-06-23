@@ -49,9 +49,7 @@ fn main() {
 
         screen.draw();
 
-        transform.yaw -= 0.1;
-
-        sleep(Duration::from_millis(3));
+        transform.yaw -= 0.2;
     }
     clearscreen::clear().unwrap();
     // Loop -----------------------------

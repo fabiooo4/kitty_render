@@ -40,7 +40,7 @@ fn parse_obj(content: &str) -> Vec<Vector3<f64>> {
         if line.trim().starts_with("f ") {
             let face_groups: Vec<&str> = line.trim()[2..].split(' ').collect();
 
-            for group in face_groups {
+            for (i, &group) in face_groups.iter().enumerate() {
                 let group_idx: Vec<usize> = group
                     .trim()
                     .split('/')
@@ -48,6 +48,21 @@ fn parse_obj(content: &str) -> Vec<Vector3<f64>> {
                     .collect();
 
                 // The first entry of the group is the vertex index (starting from 1)
+                if i >= 3 {
+                    triangle_points.push(
+                        *triangle_points
+                            .iter()
+                            .nth_back(2)
+                            .expect("Failed to read face data"),
+                    );
+
+                    triangle_points.push(
+                        *triangle_points
+                            .iter()
+                            .nth_back(1)
+                            .expect("Failed to read face data"),
+                    );
+                }
                 triangle_points.push(vertices[group_idx[0] - 1]);
             }
         }
@@ -62,7 +77,7 @@ mod test {
 
     #[test]
     fn test_parse_obj() {
-        let triangles = parse_obj(
+        let model = parse_obj(
             "
             v 1.000000 1.000000 -1.000000
             v 1.000000 -1.000000 -1.000000
@@ -92,33 +107,79 @@ mod test {
             Vector3::new(-1.000000, -1.000000, 1.000000),
         ];
 
-        let expected_triangles = vec![
+        let expected_vertices = vec![
             expected_vertices[0],
             expected_vertices[4],
+            expected_vertices[6],
+            expected_vertices[0],
             expected_vertices[6],
             expected_vertices[2],
             expected_vertices[3],
             expected_vertices[2],
             expected_vertices[6],
+            expected_vertices[3],
+            expected_vertices[6],
             expected_vertices[7],
             expected_vertices[7],
             expected_vertices[6],
+            expected_vertices[4],
+            expected_vertices[7],
             expected_vertices[4],
             expected_vertices[5],
             expected_vertices[5],
             expected_vertices[1],
             expected_vertices[3],
+            expected_vertices[5],
+            expected_vertices[3],
             expected_vertices[7],
             expected_vertices[1],
             expected_vertices[0],
             expected_vertices[2],
+            expected_vertices[1],
+            expected_vertices[2],
             expected_vertices[3],
             expected_vertices[5],
             expected_vertices[4],
+            expected_vertices[0],
+            expected_vertices[5],
             expected_vertices[0],
             expected_vertices[1],
         ];
 
-        assert_eq!(triangles, expected_triangles)
+        for (i, (vertex, expected)) in model.iter().zip(&expected_vertices).enumerate() {
+            println!(
+                "{i:2} | {:2} {:2} {:2} | {:2} {:2} {:2}",
+                expected.x, expected.y, expected.z, vertex.x, vertex.y, vertex.z
+            );
+        }
+
+        assert_eq!(expected_vertices, model)
+    }
+
+    #[test]
+    fn test_model() {
+        let model = parse_obj(
+            "
+            o Square
+            v -1.000000 -1.000000 1.000000
+            v  1.000000 -1.000000 1.000000
+            v  1.000000  1.000000 1.000000
+            v -1.000000  1.000000 1.000000
+            #
+            f 1/0/0 2/0/0 3/0/0 4/0/0
+            ",
+        );
+
+        assert_eq!(
+            model,
+            vec![
+                Vector3::new(-1., -1., 1.),
+                Vector3::new(1., -1., 1.),
+                Vector3::new(1., 1., 1.),
+                Vector3::new(-1., -1., 1.),
+                Vector3::new(1., 1., 1.),
+                Vector3::new(-1., 1., 1.)
+            ]
+        )
     }
 }

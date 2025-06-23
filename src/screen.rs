@@ -108,7 +108,7 @@ impl Screen {
     }
 
     pub fn render(&mut self, model: &Model, transform: &Transform) {
-        for (color_idx, triangle) in model.points.windows(3).enumerate() {
+        for (color_idx, triangle) in model.points.windows(3).step_by(3).enumerate() {
             let triangle = (
                 self.vertex_to_screen(triangle[0], transform),
                 self.vertex_to_screen(triangle[1], transform),
