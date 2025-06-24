@@ -9,6 +9,8 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
+    thread::sleep,
+    time::Duration,
 };
 use vector::transform::Transform;
 
@@ -23,7 +25,8 @@ fn main() {
 
     // Init -----------------------------
 
-    let mut screen = Screen::new(800, 800);
+    let mut screen = Screen::new(128, 128);
+    screen.scale(8);
 
     // Load cube model
     let model_points = load_obj("models/cube.obj").expect("Failed to read model data");
@@ -49,6 +52,8 @@ fn main() {
         transform.yaw -= 0.05;
         transform.pitch -= 0.03;
     }
+    sleep(Duration::from_millis(50));
+    screen.clear();
     clearscreen::clear().unwrap();
     // Loop -----------------------------
 }

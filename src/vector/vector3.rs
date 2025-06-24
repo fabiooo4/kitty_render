@@ -3,6 +3,7 @@ use crate::vector::Vector;
 use std::clone::Clone;
 use std::default::Default;
 use std::ops::Add;
+use std::ops::AddAssign;
 use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
@@ -95,5 +96,14 @@ where
 
     fn add(self, rhs: Self) -> Self::Output {
         Vector3::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+    }
+}
+
+impl<T> AddAssign for Vector3<T>
+where
+    T: Clone + Add<T, Output = T>,
+{
+    fn add_assign(&mut self, rhs: Self) {
+        *self = self.clone() + rhs
     }
 }

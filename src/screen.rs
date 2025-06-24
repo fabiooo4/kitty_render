@@ -1,9 +1,11 @@
 use std::{
     borrow::Cow,
-    io::{Write, stdout},
+    io::{stdout, Write},
 };
 
-use kitty_image::{Action, ActionTransmission, Command, Format, Medium, WrappedCommand};
+use kitty_image::{
+    Action, ActionDelete, ActionTransmission, Command, Format, Medium, WrappedCommand
+};
 use nix::{
     ioctl_read_bad,
     libc::{self, winsize},
@@ -21,21 +23,24 @@ pub struct Screen {
     pub size: Vector2<f64>,
     scale: usize,
     frame_buf: Vec<Vec<Color>>,
+
     action: Action,
+    action_transmission: ActionTransmission,
 }
 
 impl Screen {
     /// Creates a new target with the given size
     pub fn new(width: usize, height: usize) -> Self {
+        let action_transmission = ActionTransmission {
+            format: Format::Rgba32,
+            medium: Medium::Direct,
+            width: width as u32,
+            height: height as u32,
+            compression: false,
+            ..Default::default()
+        };
         let action = Action::TransmitAndDisplay(
-            ActionTransmission {
-                format: Format::Rgba32,
-                medium: Medium::Direct,
-                width: width as u32,
-                height: height as u32,
-                compression: false,
-                ..Default::default()
-            },
+            action_transmission,
             kitty_image::ActionPut {
                 ..Default::default()
             },
@@ -46,8 +51,9 @@ impl Screen {
             height,
             size: Vector2::new(width as f64, height as f64),
             scale: 1,
-            frame_buf: vec![vec![Color::try_from("#000000").unwrap(); width]; height],
+            frame_buf: vec![vec![Color::default(); width]; height],
             action,
+            action_transmission,
         }
     }
 
@@ -88,23 +94,19 @@ impl Screen {
         let scaled_height = self.height * scale;
 
         // Scale kitty protocol action
+        let mut action_transmission = self.action_transmission;
+        action_transmission.width = scaled_width as u32;
+        action_transmission.height = scaled_height as u32;
+
         self.action = Action::TransmitAndDisplay(
-            ActionTransmission {
-                format: Format::Rgba32,
-                medium: Medium::Direct,
-                width: scaled_width as u32,
-                height: scaled_height as u32,
-                compression: false,
-                ..Default::default()
-            },
+            action_transmission,
             kitty_image::ActionPut {
                 ..Default::default()
             },
         );
 
         // Scale image buffer
-        self.frame_buf =
-            vec![vec![Color::try_from("#000000").unwrap(); scaled_width]; scaled_height];
+        self.frame_buf = vec![vec![Color::default(); scaled_width]; scaled_height];
     }
 
     pub fn render(&mut self, model: &Model, transform: &Transform) {
@@ -135,24 +137,40 @@ impl Screen {
                 (max_bounds.y.ceil() as usize).clamp(0, self.height - 1),
             );
 
-            let mut weights = Vector3::default();
+            // Precalculate the steps to rasterize the triangle (Optimization)
+            let top_left_point = Vector2::new(block_start.0 as f64, block_start.1 as f64);
+            let delta_weights_row = Vector3::new(
+                triangle.1.x - triangle.0.x,
+                triangle.2.x - triangle.1.x,
+                triangle.0.x - triangle.2.x,
+            );
+
+            let delta_weights_col = Vector3::new(
+                triangle.0.y - triangle.1.y,
+                triangle.1.y - triangle.2.y,
+                triangle.2.y - triangle.0.y,
+            );
+
+            // Baricentric coordinates
+            let mut weights =
+                top_left_point.get_baricentric_coordinates(&triangle.0, &triangle.1, &triangle.2);
 
             // Render only the pixels contained in the triangle
             for y in block_start.1..block_end.1 {
+                let mut step = weights;
                 for x in block_start.0..block_end.0 {
-                    if !Vector2::new(x as f64, y as f64).is_in_triangle(
-                        &triangle.0,
-                        &triangle.1,
-                        &triangle.2,
-                        &mut weights,
-                    ) {
+                    if !Vector2::is_in_triangle(&step) {
+                        step += delta_weights_col;
                         continue;
                     }
 
                     render_scaled((x, y), self.scale, |scaled_x, scaled_y| {
                         self.frame_buf[scaled_y][scaled_x] = model.face_colors[color_idx];
                     });
+
+                    step += delta_weights_col;
                 }
+                weights += delta_weights_row;
             }
         }
     }
@@ -171,9 +189,21 @@ impl Screen {
     fn clear_frame_buf(&mut self) {
         for y in self.frame_buf.iter_mut() {
             for x in y {
-                *x = Color::try_from("#000000").unwrap();
+                *x = Color::default()
             }
         }
+    }
+
+    pub fn clear(&mut self) {
+        let action = Action::Delete(ActionDelete {
+            hard: true,
+            target: kitty_image::DeleteTarget::Placements,
+        });
+
+        let command = Command::new(action);
+        let command = WrappedCommand::new(command);
+
+        command.send_chunked(&mut stdout()).unwrap();
     }
 }
 
@@ -243,6 +273,12 @@ impl Color {
         let mut rng = rand::rng();
 
         Color::new(rng.random(), rng.random(), rng.random(), 0xff)
+    }
+}
+
+impl Default for Color {
+    fn default() -> Self {
+        Self { red: Default::default(), green: Default::default(), blue: Default::default(), alpha: u8::MAX }
     }
 }
 

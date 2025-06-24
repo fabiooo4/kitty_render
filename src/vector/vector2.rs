@@ -10,7 +10,7 @@ use std::ops::Sub;
 
 use super::vector3::Vector3;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct Vector2<T>
 where
     T: Clone,
@@ -40,30 +40,26 @@ where
         ap * ab_perp
     }
 
-    pub fn is_in_triangle(
+    pub fn get_baricentric_coordinates(
         &self,
         a: &Vector2<T>,
         b: &Vector2<T>,
         c: &Vector2<T>,
-        weights: &mut Vector3<f64>,
-    ) -> bool
+    ) -> Vector3<T> {
+        let area_abp = self.signed_triangle_area(a, b);
+        let area_bcp = self.signed_triangle_area(b, c);
+        let area_cap = self.signed_triangle_area(c, a);
+
+        Vector3::new(area_abp, area_bcp, area_cap)
+    }
+
+    pub fn is_in_triangle(baricentric: &Vector3<T>) -> bool
     where
-        T: Div<f64, Output = T> + PartialOrd<f64> + Into<f64>,
+        T: From<f64>,
     {
-        let area_abp: f64 = self.signed_triangle_area(a, b).into();
-        let area_bcp: f64 = self.signed_triangle_area(b, c).into();
-        let area_cap: f64 = self.signed_triangle_area(c, a).into();
-
-        let is_in_triangle = area_abp >= 0. && area_bcp >= 0. && area_cap >= 0.;
-
-        let normalization = (area_abp / area_abp) /* 1 */ / (area_abp + area_bcp + area_cap);
-        *weights = Vector3::new(
-            area_abp * normalization,
-            area_bcp * normalization,
-            area_cap * normalization,
-        );
-
-        is_in_triangle
+        (baricentric.x >= T::from(0.))
+            && (baricentric.y >= T::from(0.))
+            && (baricentric.z >= T::from(0.))
     }
 
     fn perpendicular(&self) -> Vector2<T>
