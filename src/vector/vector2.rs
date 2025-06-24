@@ -8,6 +8,8 @@ use std::ops::Mul;
 use std::ops::Neg;
 use std::ops::Sub;
 
+use super::vector3::Vector3;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Vector2<T>
 where
@@ -31,19 +33,37 @@ where
         Vector2 { x, y }
     }
 
-    fn point_on_right_side_of_line(&self, a: &Vector2<T>, b: &Vector2<T>) -> bool {
+    fn signed_triangle_area(&self, a: &Vector2<T>, b: &Vector2<T>) -> T {
         let ap = self.clone() - a.clone();
         let ab_perp = (b.clone() - a.clone()).perpendicular();
 
-        (ap * ab_perp) >= T::default()
+        ap * ab_perp
     }
 
-    pub fn is_in_triangle(&self, a: &Vector2<T>, b: &Vector2<T>, c: &Vector2<T>) -> bool {
-        let right_of_ab = self.point_on_right_side_of_line(a, b);
-        let right_of_bc = self.point_on_right_side_of_line(b, c);
-        let right_of_ca = self.point_on_right_side_of_line(c, a);
+    pub fn is_in_triangle(
+        &self,
+        a: &Vector2<T>,
+        b: &Vector2<T>,
+        c: &Vector2<T>,
+        weights: &mut Vector3<f64>,
+    ) -> bool
+    where
+        T: Div<f64, Output = T> + PartialOrd<f64> + Into<f64>,
+    {
+        let area_abp: f64 = self.signed_triangle_area(a, b).into();
+        let area_bcp: f64 = self.signed_triangle_area(b, c).into();
+        let area_cap: f64 = self.signed_triangle_area(c, a).into();
 
-        right_of_ab && right_of_bc && right_of_ca
+        let is_in_triangle = area_abp >= 0. && area_bcp >= 0. && area_cap >= 0.;
+
+        let normalization = (area_abp / area_abp) /* 1 */ / (area_abp + area_bcp + area_cap);
+        *weights = Vector3::new(
+            area_abp * normalization,
+            area_bcp * normalization,
+            area_cap * normalization,
+        );
+
+        is_in_triangle
     }
 
     fn perpendicular(&self) -> Vector2<T>

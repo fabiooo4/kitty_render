@@ -135,6 +135,8 @@ impl Screen {
                 (max_bounds.y.ceil() as usize).clamp(0, self.height - 1),
             );
 
+            let mut weights = Vector3::default();
+
             // Render only the pixels contained in the triangle
             for y in block_start.1..block_end.1 {
                 for x in block_start.0..block_end.0 {
@@ -142,6 +144,7 @@ impl Screen {
                         &triangle.0,
                         &triangle.1,
                         &triangle.2,
+                        &mut weights,
                     ) {
                         continue;
                     }
