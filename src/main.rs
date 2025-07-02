@@ -2,9 +2,16 @@ mod model;
 mod screen;
 mod vector;
 
+use kitty_image::{
+    Action, ActionAnimationFrameControl, ActionAnimationFrameLoading, ActionPut,
+    ActionTransmission, Command, Format, Frame, LoopMode, Medium, WrappedCommand,
+};
 use model::{Model, load_obj};
 use screen::{Color, Screen};
 use std::{
+    borrow::Cow,
+    io::{stdin, stdout},
+    num::NonZero,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -26,7 +33,7 @@ fn main() {
     // Init -----------------------------
 
     let mut screen = Screen::new(128, 128);
-    screen.scale(8);
+    // screen.scale(8);
 
     // Load cube model
     let model_points = load_obj("models/cube.obj").expect("Failed to read model data");
@@ -43,7 +50,7 @@ fn main() {
     // Init -----------------------------
 
     // Loop -----------------------------
-    clearscreen::clear().unwrap();
+    /* clearscreen::clear().unwrap();
     while running.load(Ordering::SeqCst) {
         screen.render(&cube, &transform);
 
@@ -54,6 +61,49 @@ fn main() {
     }
     sleep(Duration::from_millis(50));
     screen.clear();
-    clearscreen::clear().unwrap();
+    clearscreen::clear().unwrap(); */
     // Loop -----------------------------
+
+    clearscreen::clear().unwrap();
+
+    // --- First frame ---
+    screen.render(&cube, &transform);
+    screen.draw(true);
+
+    // Display frame 1 and wait for more frames
+    let action = Action::AnimationFrameControl(ActionAnimationFrameControl {
+        mode: kitty_image::AnimationMode::RunWithNewFrames,
+        frame_number: Some(Frame(NonZero::new(1).unwrap())),
+        gap: 1,
+        ..Default::default()
+    });
+    screen.action = action;
+    screen.draw(false); // no payload
+
+    // --- Subsequent frames ---
+    let mut line = String::new();
+    println!("Press Enter to render the next frame...");
+    while stdin().read_line(&mut line).unwrap() > 0 {
+        if line.trim().is_empty() {
+            transform.yaw -= 0.15;
+            transform.pitch -= 0.13;
+            screen.render(&cube, &transform);
+
+            // Transmit frame N
+            // TODO: Add width and height to AnimationFrameLoading and fix Overwrite
+            let action = Action::AnimationFrameLoading(ActionAnimationFrameLoading {
+                composition_mode: kitty_image::CompositionMode::Overwrite,
+                frame_number: Some(Frame(NonZero::new(1).unwrap())),
+                gap: 1,
+                ..Default::default()
+            });
+            screen.action = action;
+            screen.draw(true); // send payload
+
+            line.clear();
+            println!("Press Enter to render the next frame...");
+        } else {
+            break;
+        }
+    }
 }

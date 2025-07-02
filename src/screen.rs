@@ -1,10 +1,11 @@
 use std::{
     borrow::Cow,
-    io::{stdout, Write},
+    io::{Write, stdout},
+    num::NonZero,
 };
 
 use kitty_image::{
-    Action, ActionDelete, ActionTransmission, Command, Format, Medium, WrappedCommand
+    Action, ActionAnimationFrameLoading, ActionDelete, ActionPut, ActionTransmission, Command, Format, Medium, Quietness, WrappedCommand
 };
 use nix::{
     ioctl_read_bad,
@@ -22,9 +23,9 @@ pub struct Screen {
     pub height: usize,
     pub size: Vector2<f64>,
     scale: usize,
-    frame_buf: Vec<Vec<Color>>,
+    pub frame_buf: Vec<Vec<Color>>,
 
-    action: Action,
+    pub action: Action,
     action_transmission: ActionTransmission,
 }
 
@@ -65,25 +66,35 @@ impl Screen {
     }
 
     /// Renders to a writer
-    pub fn draw_to<W>(&mut self, writer: &mut W)
+    pub fn draw_to<W>(&mut self, writer: &mut W, payload: bool)
     where
         W: Write,
     {
         // Add the payload to the command
         let mut command = Command::new(self.action);
-        command.payload = buf_to_payload(&self.frame_buf);
+        command.id = Some(kitty_image::ID(NonZero::new(1).unwrap()));
+        command.quietness = Quietness::SupressOk;
+        println!("{command}");
+
+        if payload {
+            command.payload = buf_to_payload(&self.frame_buf);
+        }
 
         // Wrap the command in escape codes
         let command = WrappedCommand::new(command);
 
-        command.send_chunked(writer).unwrap();
+        if payload {
+            command.send_chunked(writer).unwrap();
+        } else {
+            write!(writer, "{command}").unwrap();
+        }
 
         self.clear_frame_buf();
     }
 
     /// Renders to stdout
-    pub fn draw(&mut self) {
-        self.draw_to(&mut stdout());
+    pub fn draw(&mut self, payload: bool) {
+        self.draw_to(&mut stdout(), payload);
     }
 
     /// Scales 1 pixel to be `scale` times larger
@@ -278,7 +289,12 @@ impl Color {
 
 impl Default for Color {
     fn default() -> Self {
-        Self { red: Default::default(), green: Default::default(), blue: Default::default(), alpha: u8::MAX }
+        Self {
+            red: Default::default(),
+            green: Default::default(),
+            blue: Default::default(),
+            alpha: Default::default(),
+        }
     }
 }
 
