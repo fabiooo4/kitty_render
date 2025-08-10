@@ -5,7 +5,7 @@ use std::{
 };
 
 use kitty_image::{
-    Action, ActionAnimationFrameControl, ActionAnimationFrameLoading, ActionDelete, ActionPut,
+    Action, ActionAnimationFrameControl, ActionAnimationFrameLoading, ActionDelete,
     ActionTransmission, Command, Format, Frame, Medium, Quietness, WrappedCommand,
 };
 use nix::{
@@ -55,7 +55,7 @@ impl Screen {
             scale: 1,
             frame_buf: vec![vec![Color::default(); width]; height],
             action,
-            first_frame: false,
+            first_frame: true,
         }
     }
 
@@ -74,18 +74,18 @@ impl Screen {
         // Add the payload to the command
         let mut command = Command::new(self.action);
         command.id = Some(kitty_image::ID(NonZero::new(1).unwrap()));
-        command.quietness = Quietness::SupressOk;
+        command.quietness = Quietness::SuppressAll;
 
         command.payload = buf_to_payload(&self.frame_buf);
 
         // Wrap the command in escape codes
         let command = WrappedCommand::new(command);
         command.send_chunked(writer).unwrap();
+        writer.flush().unwrap();
 
         self.clear_frame_buf();
 
         if self.first_frame {
-            println!("First frame sent, now loading new frames");
             self.first_frame = false;
 
             // Set animation mode to load new frames
@@ -96,7 +96,7 @@ impl Screen {
 
             let mut command = Command::new(load_action);
             command.id = Some(kitty_image::ID(NonZero::new(1).unwrap()));
-            command.quietness = Quietness::SupressOk;
+            command.quietness = Quietness::SuppressAll;
 
             let command = WrappedCommand::new(command);
             write!(writer, "{command}").unwrap();
@@ -105,7 +105,7 @@ impl Screen {
             let action = Action::AnimationFrameLoading(ActionAnimationFrameLoading {
                 composition_mode: kitty_image::CompositionMode::Overwrite,
                 frame_number: Some(Frame(NonZero::new(1).unwrap())),
-                gap: 100,
+                gap: 16,
                 width: (self.width * self.scale) as u32,
                 height: (self.height * self.scale) as u32,
                 ..Default::default()
@@ -287,6 +287,7 @@ fn get_term_size() -> winsize {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Default)]
 pub struct Color {
     pub red: u8,
     pub green: u8,
@@ -308,17 +309,6 @@ impl Color {
         let mut rng = rand::rng();
 
         Color::new(rng.random(), rng.random(), rng.random(), 0xff)
-    }
-}
-
-impl Default for Color {
-    fn default() -> Self {
-        Self {
-            red: Default::default(),
-            green: Default::default(),
-            blue: Default::default(),
-            alpha: Default::default(),
-        }
     }
 }
 

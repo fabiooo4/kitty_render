@@ -2,16 +2,9 @@ mod model;
 mod screen;
 mod vector;
 
-use kitty_image::{
-    Action, ActionAnimationFrameControl, ActionAnimationFrameLoading, ActionPut,
-    ActionTransmission, Command, Format, Frame, LoopMode, Medium, WrappedCommand,
-};
 use model::{Model, load_obj};
 use screen::{Color, Screen};
 use std::{
-    borrow::Cow,
-    io::{stdin, stdout},
-    num::NonZero,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -33,7 +26,7 @@ fn main() {
     // Init -----------------------------
 
     let mut screen = Screen::new(128, 128);
-    // screen.scale(8);
+    screen.scale(8);
 
     // Load cube model
     let model_points = load_obj("models/cube.obj").expect("Failed to read model data");
