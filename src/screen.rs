@@ -5,8 +5,8 @@ use std::{
 };
 
 use kitty_image::{
-    Action, ActionAnimationFrameControl, ActionAnimationFrameLoading, ActionDelete,
-    ActionTransmission, Command, Format, Frame, Medium, Quietness, WrappedCommand,
+    Action, ActionDelete, ActionTransmission, Command, DeleteTarget, Format, ID, Medium, Quietness,
+    WrappedCommand,
 };
 use nix::{
     ioctl_read_bad,
@@ -24,8 +24,8 @@ pub struct Screen {
     pub height: usize,
     pub size: Vector2<f64>,
     scale: usize,
-    pub frame_buf: Vec<Vec<Color>>,
-    first_frame: bool,
+    frame_buf: Vec<Vec<Color>>,
+    frame: u32,
 
     pub action: Action,
 }
@@ -54,8 +54,8 @@ impl Screen {
             size: Vector2::new(width as f64, height as f64),
             scale: 1,
             frame_buf: vec![vec![Color::default(); width]; height],
+            frame: 1,
             action,
-            first_frame: true,
         }
     }
 
@@ -71,11 +71,16 @@ impl Screen {
     where
         W: Write,
     {
+        let overflow = self.frame.checked_add(1);
+        match overflow {
+            Some(new) => self.frame = new,
+            None => self.frame = 2,
+        }
+
         // Add the payload to the command
         let mut command = Command::new(self.action);
-        command.id = Some(kitty_image::ID(NonZero::new(1).unwrap()));
+        command.id = Some(ID(NonZero::new(self.frame as u32).unwrap()));
         command.quietness = Quietness::SuppressAll;
-
         command.payload = buf_to_payload(&self.frame_buf);
 
         // Wrap the command in escape codes
@@ -84,34 +89,7 @@ impl Screen {
         writer.flush().unwrap();
 
         self.clear_frame_buf();
-
-        if self.first_frame {
-            self.first_frame = false;
-
-            // Set animation mode to load new frames
-            let load_action = Action::AnimationFrameControl(ActionAnimationFrameControl {
-                mode: kitty_image::AnimationMode::RunWithNewFrames,
-                ..Default::default()
-            });
-
-            let mut command = Command::new(load_action);
-            command.id = Some(kitty_image::ID(NonZero::new(1).unwrap()));
-            command.quietness = Quietness::SuppressAll;
-
-            let command = WrappedCommand::new(command);
-            write!(writer, "{command}").unwrap();
-
-            // Set the action to load the next frame
-            let action = Action::AnimationFrameLoading(ActionAnimationFrameLoading {
-                composition_mode: kitty_image::CompositionMode::Overwrite,
-                frame_number: Some(Frame(NonZero::new(1).unwrap())),
-                gap: 16,
-                width: (self.width * self.scale) as u32,
-                height: (self.height * self.scale) as u32,
-                ..Default::default()
-            });
-            self.action = action;
-        }
+        self.clear();
     }
 
     /// Renders to stdout
@@ -229,13 +207,17 @@ impl Screen {
         }
     }
 
-    pub fn delete(&mut self) {
+    pub fn clear(&mut self) {
         let action = Action::Delete(ActionDelete {
             hard: true,
-            target: kitty_image::DeleteTarget::Placements,
+            target: DeleteTarget::IDLessEqual {
+                id: ID(NonZero::new((self.frame as u32).saturating_sub(1)).unwrap()),
+            },
         });
 
-        let command = Command::new(action);
+        let mut command = Command::new(action);
+        command.quietness = Quietness::SuppressAll;
+
         let command = WrappedCommand::new(command);
 
         print!("{command}");
@@ -286,8 +268,7 @@ fn get_term_size() -> winsize {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct Color {
     pub red: u8,
     pub green: u8,
