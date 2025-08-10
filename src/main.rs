@@ -25,11 +25,11 @@ fn main() {
 
     // Init -----------------------------
 
-    let mut screen = Screen::new(128, 128);
-    screen.scale(8);
+    let mut screen = Screen::new_fullscreen();
+    // screen.scale(4);
 
     // Load cube model
-    let model_points = load_obj("models/cube.obj").expect("Failed to read model data");
+    let model_points = load_obj("models/monkey.obj").expect("Failed to read model data");
 
     // Assign a random color to each triangle
     let triangle_colors: Vec<Color> = (0..model_points.windows(3).count())
@@ -53,7 +53,7 @@ fn main() {
         transform.pitch -= 0.03;
     }
     sleep(Duration::from_millis(50));
-    screen.clear();
+    screen.clear_images();
     clearscreen::clear().unwrap();
     // Loop -----------------------------
 }

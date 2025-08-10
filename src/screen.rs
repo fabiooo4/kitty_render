@@ -89,7 +89,7 @@ impl Screen {
         writer.flush().unwrap();
 
         self.clear_frame_buf();
-        self.clear();
+        self.clear_images();
     }
 
     /// Renders to stdout
@@ -105,17 +105,9 @@ impl Screen {
         let scaled_height = self.height * scale;
 
         // Scale kitty protocol action
-        match self.action {
-            Action::TransmitAndDisplay(ref mut settings, _) => {
-                settings.width = scaled_width as u32;
-                settings.height = scaled_height as u32;
-            }
-
-            Action::AnimationFrameLoading(ref mut settings) => {
-                settings.width = scaled_width as u32;
-                settings.height = scaled_height as u32;
-            }
-            _ => {}
+        if let Action::TransmitAndDisplay(ref mut settings, _) = self.action {
+            settings.width = scaled_width as u32;
+            settings.height = scaled_height as u32;
         }
 
         // Scale image buffer
@@ -207,7 +199,7 @@ impl Screen {
         }
     }
 
-    pub fn clear(&mut self) {
+    pub fn clear_images(&mut self) {
         let action = Action::Delete(ActionDelete {
             hard: true,
             target: DeleteTarget::IDLessEqual {
