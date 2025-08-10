@@ -53,7 +53,6 @@ fn main() {
         transform.pitch -= 0.03;
     }
     sleep(Duration::from_millis(50));
-    screen.clear();
     clearscreen::clear().unwrap();
     // Loop -----------------------------
 }

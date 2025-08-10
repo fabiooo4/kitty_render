@@ -1,10 +1,12 @@
 use std::{
     borrow::Cow,
-    io::{stdout, Write},
+    io::{Write, stdout},
+    num::NonZero,
 };
 
 use kitty_image::{
-    Action, ActionDelete, ActionTransmission, Command, Format, Medium, WrappedCommand
+    Action, ActionDelete, ActionTransmission, Command, DeleteTarget, Format, ID, Medium, Quietness,
+    WrappedCommand,
 };
 use nix::{
     ioctl_read_bad,
@@ -23,6 +25,7 @@ pub struct Screen {
     pub size: Vector2<f64>,
     scale: usize,
     frame_buf: Vec<Vec<Color>>,
+    frame: u32,
 
     action: Action,
     action_transmission: ActionTransmission,
@@ -52,6 +55,7 @@ impl Screen {
             size: Vector2::new(width as f64, height as f64),
             scale: 1,
             frame_buf: vec![vec![Color::default(); width]; height],
+            frame: 1,
             action,
             action_transmission,
         }
@@ -69,8 +73,16 @@ impl Screen {
     where
         W: Write,
     {
+        let overflow = self.frame.checked_add(1);
+        match overflow {
+            Some(new) => self.frame = new,
+            None => self.frame = 2,
+        }
+
         // Add the payload to the command
         let mut command = Command::new(self.action);
+        command.id = Some(ID(NonZero::new(self.frame as u32).unwrap()));
+        command.quietness = Quietness::SuppressAll;
         command.payload = buf_to_payload(&self.frame_buf);
 
         // Wrap the command in escape codes
@@ -79,6 +91,7 @@ impl Screen {
         command.send_chunked(writer).unwrap();
 
         self.clear_frame_buf();
+        self.clear();
     }
 
     /// Renders to stdout
@@ -197,13 +210,17 @@ impl Screen {
     pub fn clear(&mut self) {
         let action = Action::Delete(ActionDelete {
             hard: true,
-            target: kitty_image::DeleteTarget::Placements,
+            target: DeleteTarget::IDLessEqual {
+                id: ID(NonZero::new((self.frame as u32).saturating_sub(1)).unwrap()),
+            },
         });
 
-        let command = Command::new(action);
+        let mut command = Command::new(action);
+        command.quietness = Quietness::SuppressAll;
+
         let command = WrappedCommand::new(command);
 
-        command.send_chunked(&mut stdout()).unwrap();
+        print!("{command}");
     }
 }
 
@@ -278,7 +295,12 @@ impl Color {
 
 impl Default for Color {
     fn default() -> Self {
-        Self { red: Default::default(), green: Default::default(), blue: Default::default(), alpha: u8::MAX }
+        Self {
+            red: Default::default(),
+            green: Default::default(),
+            blue: Default::default(),
+            alpha: Default::default(),
+        }
     }
 }
 
