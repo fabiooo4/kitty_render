@@ -146,13 +146,6 @@ mod test {
             expected_vertices[1],
         ];
 
-        for (i, (vertex, expected)) in model.iter().zip(&expected_vertices).enumerate() {
-            println!(
-                "{i:2} | {:2} {:2} {:2} | {:2} {:2} {:2}",
-                expected.x, expected.y, expected.z, vertex.x, vertex.y, vertex.z
-            );
-        }
-
         assert_eq!(expected_vertices, model)
     }
 

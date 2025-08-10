@@ -92,8 +92,7 @@ dependencies = [
 [[package]]
 name = "kitty_image"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59bed8e1e801b75e8a97ecef1d8a3528ec8b38ceafd354691ddde887aac35736"
+source = "git+https://gitlab.com/fabiooo4/kitty-images.git#8af7e86947c46109a94c1f3ea15b91941cff9368"
 dependencies = [
  "base64",
 ]

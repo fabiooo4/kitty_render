@@ -50,7 +50,7 @@ fn main() {
     // Init -----------------------------
 
     // Loop -----------------------------
-    /* clearscreen::clear().unwrap();
+    clearscreen::clear().unwrap();
     while running.load(Ordering::SeqCst) {
         screen.render(&cube, &transform);
 
@@ -60,50 +60,7 @@ fn main() {
         transform.pitch -= 0.03;
     }
     sleep(Duration::from_millis(50));
-    screen.clear();
-    clearscreen::clear().unwrap(); */
-    // Loop -----------------------------
-
+    screen.delete();
     clearscreen::clear().unwrap();
-
-    // --- First frame ---
-    screen.render(&cube, &transform);
-    screen.draw(true);
-
-    // Display frame 1 and wait for more frames
-    let action = Action::AnimationFrameControl(ActionAnimationFrameControl {
-        mode: kitty_image::AnimationMode::RunWithNewFrames,
-        frame_number: Some(Frame(NonZero::new(1).unwrap())),
-        gap: 1,
-        ..Default::default()
-    });
-    screen.action = action;
-    screen.draw(false); // no payload
-
-    // --- Subsequent frames ---
-    let mut line = String::new();
-    println!("Press Enter to render the next frame...");
-    while stdin().read_line(&mut line).unwrap() > 0 {
-        if line.trim().is_empty() {
-            transform.yaw -= 0.15;
-            transform.pitch -= 0.13;
-            screen.render(&cube, &transform);
-
-            // Transmit frame N
-            // TODO: Add width and height to AnimationFrameLoading and fix Overwrite
-            let action = Action::AnimationFrameLoading(ActionAnimationFrameLoading {
-                composition_mode: kitty_image::CompositionMode::Overwrite,
-                frame_number: Some(Frame(NonZero::new(1).unwrap())),
-                gap: 1,
-                ..Default::default()
-            });
-            screen.action = action;
-            screen.draw(true); // send payload
-
-            line.clear();
-            println!("Press Enter to render the next frame...");
-        } else {
-            break;
-        }
-    }
+    // Loop -----------------------------
 }

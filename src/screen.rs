@@ -5,7 +5,8 @@ use std::{
 };
 
 use kitty_image::{
-    Action, ActionAnimationFrameLoading, ActionDelete, ActionPut, ActionTransmission, Command, Format, Medium, Quietness, WrappedCommand
+    Action, ActionAnimationFrameControl, ActionAnimationFrameLoading, ActionDelete, ActionPut,
+    ActionTransmission, Command, Format, Frame, Medium, Quietness, WrappedCommand,
 };
 use nix::{
     ioctl_read_bad,
@@ -24,9 +25,9 @@ pub struct Screen {
     pub size: Vector2<f64>,
     scale: usize,
     pub frame_buf: Vec<Vec<Color>>,
+    first_frame: bool,
 
     pub action: Action,
-    action_transmission: ActionTransmission,
 }
 
 impl Screen {
@@ -54,7 +55,7 @@ impl Screen {
             scale: 1,
             frame_buf: vec![vec![Color::default(); width]; height],
             action,
-            action_transmission,
+            first_frame: false,
         }
     }
 
@@ -66,7 +67,7 @@ impl Screen {
     }
 
     /// Renders to a writer
-    pub fn draw_to<W>(&mut self, writer: &mut W, payload: bool)
+    pub fn draw_to<W>(&mut self, writer: &mut W)
     where
         W: Write,
     {
@@ -74,27 +75,48 @@ impl Screen {
         let mut command = Command::new(self.action);
         command.id = Some(kitty_image::ID(NonZero::new(1).unwrap()));
         command.quietness = Quietness::SupressOk;
-        println!("{command}");
 
-        if payload {
-            command.payload = buf_to_payload(&self.frame_buf);
-        }
+        command.payload = buf_to_payload(&self.frame_buf);
 
         // Wrap the command in escape codes
         let command = WrappedCommand::new(command);
-
-        if payload {
-            command.send_chunked(writer).unwrap();
-        } else {
-            write!(writer, "{command}").unwrap();
-        }
+        command.send_chunked(writer).unwrap();
 
         self.clear_frame_buf();
+
+        if self.first_frame {
+            println!("First frame sent, now loading new frames");
+            self.first_frame = false;
+
+            // Set animation mode to load new frames
+            let load_action = Action::AnimationFrameControl(ActionAnimationFrameControl {
+                mode: kitty_image::AnimationMode::RunWithNewFrames,
+                ..Default::default()
+            });
+
+            let mut command = Command::new(load_action);
+            command.id = Some(kitty_image::ID(NonZero::new(1).unwrap()));
+            command.quietness = Quietness::SupressOk;
+
+            let command = WrappedCommand::new(command);
+            write!(writer, "{command}").unwrap();
+
+            // Set the action to load the next frame
+            let action = Action::AnimationFrameLoading(ActionAnimationFrameLoading {
+                composition_mode: kitty_image::CompositionMode::Overwrite,
+                frame_number: Some(Frame(NonZero::new(1).unwrap())),
+                gap: 100,
+                width: (self.width * self.scale) as u32,
+                height: (self.height * self.scale) as u32,
+                ..Default::default()
+            });
+            self.action = action;
+        }
     }
 
     /// Renders to stdout
-    pub fn draw(&mut self, payload: bool) {
-        self.draw_to(&mut stdout(), payload);
+    pub fn draw(&mut self) {
+        self.draw_to(&mut stdout());
     }
 
     /// Scales 1 pixel to be `scale` times larger
@@ -105,16 +127,18 @@ impl Screen {
         let scaled_height = self.height * scale;
 
         // Scale kitty protocol action
-        let mut action_transmission = self.action_transmission;
-        action_transmission.width = scaled_width as u32;
-        action_transmission.height = scaled_height as u32;
+        match self.action {
+            Action::TransmitAndDisplay(ref mut settings, _) => {
+                settings.width = scaled_width as u32;
+                settings.height = scaled_height as u32;
+            }
 
-        self.action = Action::TransmitAndDisplay(
-            action_transmission,
-            kitty_image::ActionPut {
-                ..Default::default()
-            },
-        );
+            Action::AnimationFrameLoading(ref mut settings) => {
+                settings.width = scaled_width as u32;
+                settings.height = scaled_height as u32;
+            }
+            _ => {}
+        }
 
         // Scale image buffer
         self.frame_buf = vec![vec![Color::default(); scaled_width]; scaled_height];
@@ -205,7 +229,7 @@ impl Screen {
         }
     }
 
-    pub fn clear(&mut self) {
+    pub fn delete(&mut self) {
         let action = Action::Delete(ActionDelete {
             hard: true,
             target: kitty_image::DeleteTarget::Placements,
@@ -214,7 +238,7 @@ impl Screen {
         let command = Command::new(action);
         let command = WrappedCommand::new(command);
 
-        command.send_chunked(&mut stdout()).unwrap();
+        print!("{command}");
     }
 }
 
