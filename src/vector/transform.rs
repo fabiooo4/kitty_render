@@ -6,16 +6,22 @@ pub struct Transform {
     pub yaw: f64,
     /// Rotation around x axis
     pub pitch: f64,
+    /// Position in world space
+    pub position: Vector3<f64>,
 }
 
 impl Transform {
     pub fn new(yaw: f64, pitch: f64) -> Self {
-        Transform { yaw, pitch }
+        Transform {
+            yaw,
+            pitch,
+            position: Vector3::default(),
+        }
     }
 
     pub fn vertex_to_world(&self, p: Vector3<f64>) -> Vector3<f64> {
         let (i, j, k) = self.get_basis_vectors();
-        Transform::apply_transform(i, j, k, p)
+        Transform::apply_transform(i, j, k, p) + self.position
     }
 
     fn get_basis_vectors(&self) -> (Vector3<f64>, Vector3<f64>, Vector3<f64>) {

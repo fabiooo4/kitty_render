@@ -23,11 +23,13 @@ pub struct Screen {
     pub width: usize,
     pub height: usize,
     pub size: Vector2<f64>,
+    pub fov: f64,
+    
     scale: usize,
     frame_buf: Vec<Vec<Color>>,
     frame: u32,
 
-    pub action: Action,
+    action: Action,
 }
 
 impl Screen {
@@ -55,6 +57,7 @@ impl Screen {
             scale: 1,
             frame_buf: vec![vec![Color::default(); width]; height],
             frame: 1,
+            fov: 45.,
             action,
         }
     }
@@ -117,9 +120,9 @@ impl Screen {
     pub fn render(&mut self, model: &Model, transform: &Transform) {
         for (color_idx, triangle) in model.points.windows(3).step_by(3).enumerate() {
             let triangle = (
-                self.vertex_to_screen(triangle[0], transform),
-                self.vertex_to_screen(triangle[1], transform),
-                self.vertex_to_screen(triangle[2], transform),
+                self.vertex_to_screen(triangle[0], transform, self.fov),
+                self.vertex_to_screen(triangle[1], transform, self.fov),
+                self.vertex_to_screen(triangle[2], transform, self.fov),
             );
 
             // Min and max bounds for a triangle
@@ -181,11 +184,11 @@ impl Screen {
     }
 
     /// Transform vertex position to screen space (pixel coordinates)
-    fn vertex_to_screen(&self, vertex: Vector3<f64>, transform: &Transform) -> Vector2<f64> {
+    fn vertex_to_screen(&self, vertex: Vector3<f64>, transform: &Transform, fov: f64) -> Vector2<f64> {
         let vertex = transform.vertex_to_world(vertex);
 
-        let screen_height_world = 5.;
-        let pixels_per_world_unit = self.size.y / screen_height_world;
+        let screen_height_world = f64::tan(fov / 2.) * 2.0;
+        let pixels_per_world_unit = self.size.y / screen_height_world / vertex.z;
 
         let pixel_offset = Vector2::new(vertex.x, vertex.y) * pixels_per_world_unit;
         self.size / 2. + pixel_offset

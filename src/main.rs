@@ -13,6 +13,8 @@ use termion::raw::RawTerminal;
 use termion::{input::TermRead, raw::IntoRawMode};
 use vector::transform::Transform;
 
+use crate::vector::vector3::Vector3;
+
 fn main() {
     // Terminal setup -------------------
     // Set terminal to raw mode to allow reading stdin one key at a time
@@ -91,10 +93,34 @@ fn handle_input(
                 exit(EXIT_SUCCESS);
             }
 
-            Key::Char('w') => transform.pitch += 0.05,
-            Key::Char('s') => transform.pitch -= 0.05,
-            Key::Char('a') => transform.yaw += 0.05,
-            Key::Char('d') => transform.yaw -= 0.05,
+            // Position
+            Key::Char('w') => transform.position += Vector3::new(0., 0., -0.1),
+            Key::Char('s') => transform.position += Vector3::new(0., 0., 0.1),
+            Key::Char('a') => transform.position += Vector3::new(-0.1, 0., 0.),
+            Key::Char('d') => transform.position += Vector3::new(0.1, 0., 0.),
+            Key::Char('W') => transform.position += Vector3::new(0., 0., -0.5),
+            Key::Char('S') => transform.position += Vector3::new(0., 0., 0.5),
+            Key::Char('A') => transform.position += Vector3::new(-0.5, 0., 0.),
+            Key::Char('D') => transform.position += Vector3::new(0.5, 0., 0.),
+
+            // Rotation
+            Key::Left => transform.yaw += 0.1,
+            Key::Right => transform.yaw -= 0.1,
+            Key::Up => transform.pitch += 0.1,
+            Key::Down => transform.pitch -= 0.1,
+
+            // Fov
+            Key::Char('q') => screen.fov -= 0.01,
+            Key::Char('e') => screen.fov += 0.01,
+            Key::Char('Q') => screen.fov -= 0.05,
+            Key::Char('E') => screen.fov += 0.05,
+
+            // Reset transformation
+            Key::Char('r') => {
+                transform.yaw = 0.0;
+                transform.pitch = 0.0;
+                transform.position = Vector3::default();
+            }
             _ => {}
         }
     }
