@@ -89,7 +89,7 @@ impl Screen {
         writer.flush().unwrap();
 
         self.clear_frame_buf();
-        self.clear_images();
+        self.clear_frames();
     }
 
     /// Renders to stdout
@@ -199,12 +199,26 @@ impl Screen {
         }
     }
 
-    pub fn clear_images(&mut self) {
+    pub fn clear_frames(&mut self) {
         let action = Action::Delete(ActionDelete {
             hard: true,
             target: DeleteTarget::IDLessEqual {
                 id: ID(NonZero::new((self.frame as u32).saturating_sub(1)).unwrap()),
             },
+        });
+
+        let mut command = Command::new(action);
+        command.quietness = Quietness::SuppressAll;
+
+        let command = WrappedCommand::new(command);
+
+        print!("{command}");
+    }
+
+    pub fn delete_all_images(&mut self) {
+        let action = Action::Delete(ActionDelete {
+            hard: true,
+            target: DeleteTarget::Placements,
         });
 
         let mut command = Command::new(action);

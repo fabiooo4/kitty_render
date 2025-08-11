@@ -10,3 +10,4 @@ ctrlc = "3.4.7"
 # kitty_image = "0.1.0"
 kitty_image = { git = "https://gitlab.com/fabiooo4/kitty-images.git" }
 rand = "0.9.1"
+termion = "4.0.5"
