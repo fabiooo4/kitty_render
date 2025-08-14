@@ -43,13 +43,15 @@ fn main() {
 
     // Load cube model
     let monkey_points = load_obj("models/monkey.obj").expect("Failed to read model data");
+    let cube_points = load_obj("models/cube.obj").expect("Failed to read model data");
 
     // Assign a random color to each triangle
     let triangle_colors: Vec<Color> = (0..monkey_points.windows(3).count())
         .map(|_| Color::random())
         .collect();
 
-    let monkey = Model::new(monkey_points, triangle_colors);
+    let monkey = Model::new(monkey_points, triangle_colors.clone());
+    let cube = Model::new(cube_points, triangle_colors);
 
     let mut transform = Transform::default();
     transform.position = Vector3::new(0., 0., -2.5);
@@ -60,6 +62,7 @@ fn main() {
         handle_input(&mut stdin, &mut stdout, &mut screen, &mut transform);
 
         screen.render(&monkey, &transform);
+        screen.render(&cube, &transform);
 
         screen.draw();
     }

@@ -161,3 +161,15 @@ where
         Vector2::new(self.x, self.y)
     }
 }
+
+impl Div<Vector3<f64>> for f64 {
+    type Output = Vector3<f64>;
+
+    fn div(self, rhs: Vector3<f64>) -> Self::Output {
+        Vector3::new(
+            self / rhs.x.clone(),
+            self / rhs.y.clone(),
+            self / rhs.z.clone(),
+        )
+    }
+}

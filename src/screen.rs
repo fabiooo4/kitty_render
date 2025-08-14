@@ -195,8 +195,7 @@ impl Screen {
                         step.z / triangle_area,
                     );
 
-                    let interpolated_depth =
-                        barycentric_coords * Vector3::new(triangle.0.z, triangle.1.z, triangle.2.z);
+                    let interpolated_depth = 1. / (barycentric_coords * (1. / Vector3::new(triangle.0.z, triangle.1.z, triangle.2.z)));
 
                     if interpolated_depth < self.depth_buf[y][x] {
                         step += delta_weights_col;
