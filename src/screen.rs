@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    f64,
     io::{Write, stdout},
     num::NonZero,
 };
@@ -24,9 +25,10 @@ pub struct Screen {
     pub height: usize,
     pub size: Vector2<f64>,
     pub fov: f64,
-    
+
     scale: usize,
     frame_buf: Vec<Vec<Color>>,
+    depth_buf: Vec<Vec<f64>>,
     frame: u32,
 
     action: Action,
@@ -56,6 +58,7 @@ impl Screen {
             size: Vector2::new(width as f64, height as f64),
             scale: 1,
             frame_buf: vec![vec![Color::default(); width]; height],
+            depth_buf: vec![vec![f64::NEG_INFINITY; width]; height],
             frame: 1,
             fov: 45.,
             action,
@@ -92,6 +95,7 @@ impl Screen {
         writer.flush().unwrap();
 
         self.clear_frame_buf();
+        self.clear_depth_buf();
         self.clear_frames();
     }
 
@@ -159,9 +163,21 @@ impl Screen {
                 triangle.2.y - triangle.0.y,
             );
 
-            // Baricentric coordinates
-            let mut weights =
-                top_left_point.get_baricentric_coordinates(&triangle.0, &triangle.1, &triangle.2);
+            let mut weights = top_left_point.get_barycentric_weights(
+                &triangle.0.into(),
+                &triangle.1.into(),
+                &triangle.2.into(),
+            );
+
+            let triangle_area = Vector2::signed_parallelogram_area(
+                &triangle.0.into(),
+                &triangle.1.into(),
+                &triangle.2.into(),
+            );
+
+            if triangle_area == 0. {
+                continue;
+            }
 
             // Render only the pixels contained in the triangle
             for y in block_start.1..block_end.1 {
@@ -171,6 +187,23 @@ impl Screen {
                         step += delta_weights_col;
                         continue;
                     }
+
+                    // Calculate the barycentric coordinates
+                    let barycentric_coords = Vector3::new(
+                        step.x / triangle_area,
+                        step.y / triangle_area,
+                        step.z / triangle_area,
+                    );
+
+                    let interpolated_depth =
+                        barycentric_coords * Vector3::new(triangle.0.z, triangle.1.z, triangle.2.z);
+
+                    if interpolated_depth < self.depth_buf[y][x] {
+                        step += delta_weights_col;
+                        continue;
+                    };
+
+                    self.depth_buf[y][x] = interpolated_depth;
 
                     render_scaled((x, y), self.scale, |scaled_x, scaled_y| {
                         self.frame_buf[scaled_y][scaled_x] = model.face_colors[color_idx];
@@ -184,20 +217,37 @@ impl Screen {
     }
 
     /// Transform vertex position to screen space (pixel coordinates)
-    fn vertex_to_screen(&self, vertex: Vector3<f64>, transform: &Transform, fov: f64) -> Vector2<f64> {
-        let vertex = transform.vertex_to_world(vertex);
+    fn vertex_to_screen(
+        &self,
+        vertex: Vector3<f64>,
+        transform: &Transform,
+        fov: f64,
+    ) -> Vector3<f64> {
+        let world_vertex = transform.vertex_to_world(vertex);
 
         let screen_height_world = f64::tan(fov / 2.) * 2.0;
-        let pixels_per_world_unit = self.size.y / screen_height_world / vertex.z;
+        let pixels_per_world_unit = self.size.y / screen_height_world / world_vertex.z;
 
-        let pixel_offset = Vector2::new(vertex.x, vertex.y) * pixels_per_world_unit;
-        self.size / 2. + pixel_offset
+        let pixel_offset = Vector2::new(world_vertex.x, world_vertex.y) * pixels_per_world_unit;
+        return Vector3::new(
+            self.size.x / 2. + pixel_offset.x,
+            self.size.y / 2. + pixel_offset.y,
+            world_vertex.z,
+        );
     }
 
     fn clear_frame_buf(&mut self) {
         for y in self.frame_buf.iter_mut() {
             for x in y {
                 *x = Color::default()
+            }
+        }
+    }
+
+    fn clear_depth_buf(&mut self) {
+        for y in self.depth_buf.iter_mut() {
+            for x in y {
+                *x = f64::NEG_INFINITY;
             }
         }
     }
@@ -249,7 +299,7 @@ fn render_scaled<T: FnMut(usize, usize)>(point: (usize, usize), scale: usize, mu
 fn buf_to_payload(frame_buf: &[Vec<Color>]) -> Cow<[u8]> {
     let mut payload: Vec<u8> = Vec::with_capacity(4 * frame_buf.len());
 
-    for row in frame_buf.iter().rev() {
+    for row in frame_buf.iter() {
         for color in row {
             payload.push(color.red);
             payload.push(color.green);

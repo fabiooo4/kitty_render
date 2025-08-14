@@ -33,22 +33,23 @@ where
         Vector2 { x, y }
     }
 
-    fn signed_triangle_area(&self, a: &Vector2<T>, b: &Vector2<T>) -> T {
+    /// Calculates the double the area of the triangle formed by the points `self`, `a`, and `b`
+    pub fn signed_parallelogram_area(&self, a: &Vector2<T>, b: &Vector2<T>) -> T {
         let ap = self.clone() - a.clone();
         let ab_perp = (b.clone() - a.clone()).perpendicular();
 
         ap * ab_perp
     }
 
-    pub fn get_baricentric_coordinates(
+    pub fn get_barycentric_weights(
         &self,
         a: &Vector2<T>,
         b: &Vector2<T>,
         c: &Vector2<T>,
     ) -> Vector3<T> {
-        let area_abp = self.signed_triangle_area(a, b);
-        let area_bcp = self.signed_triangle_area(b, c);
-        let area_cap = self.signed_triangle_area(c, a);
+        let area_abp = self.signed_parallelogram_area(a, b);
+        let area_bcp = self.signed_parallelogram_area(b, c);
+        let area_cap = self.signed_parallelogram_area(c, a);
 
         Vector3::new(area_abp, area_bcp, area_cap)
     }

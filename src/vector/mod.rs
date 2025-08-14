@@ -49,7 +49,7 @@ mod test {
         let b = Vector2::new(7., 4.);
         let c = Vector2::new(4., 8.);
 
-        let baricentric = Vector2::new(4., 4.).get_baricentric_coordinates(&a, &b, &c);
+        let baricentric = Vector2::new(4., 4.).get_barycentric_weights(&a, &b, &c);
         assert!(Vector2::is_in_triangle(&baricentric));
     }
 }

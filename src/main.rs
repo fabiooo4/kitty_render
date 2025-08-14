@@ -37,27 +37,29 @@ fn main() {
     // Terminal setup -------------------
 
     // Init -----------------------------
-    let mut screen = Screen::new(256, 256);
-    screen.scale(4);
+    let mut screen = Screen::new(512, 512);
+    screen.scale(2);
+    // let mut screen = Screen::new_fullscreen();
 
     // Load cube model
-    let model_points = load_obj("models/cube.obj").expect("Failed to read model data");
+    let monkey_points = load_obj("models/monkey.obj").expect("Failed to read model data");
 
     // Assign a random color to each triangle
-    let triangle_colors: Vec<Color> = (0..model_points.windows(3).count())
+    let triangle_colors: Vec<Color> = (0..monkey_points.windows(3).count())
         .map(|_| Color::random())
         .collect();
 
-    let cube = Model::new(model_points, triangle_colors);
+    let monkey = Model::new(monkey_points, triangle_colors);
 
     let mut transform = Transform::default();
+    transform.position = Vector3::new(0., 0., -2.5);
     // Init -----------------------------
 
     // Loop -----------------------------
     loop {
         handle_input(&mut stdin, &mut stdout, &mut screen, &mut transform);
 
-        screen.render(&cube, &transform);
+        screen.render(&monkey, &transform);
 
         screen.draw();
     }
@@ -94,13 +96,13 @@ fn handle_input(
             }
 
             // Position
-            Key::Char('w') => transform.position += Vector3::new(0., 0., -0.1),
-            Key::Char('s') => transform.position += Vector3::new(0., 0., 0.1),
+            Key::Char('w') => transform.position += Vector3::new(0., 0., 0.1),
+            Key::Char('W') => transform.position += Vector3::new(0., 0., 0.5),
+            Key::Char('s') => transform.position += Vector3::new(0., 0., -0.1),
+            Key::Char('S') => transform.position += Vector3::new(0., 0., -0.5),
             Key::Char('a') => transform.position += Vector3::new(-0.1, 0., 0.),
-            Key::Char('d') => transform.position += Vector3::new(0.1, 0., 0.),
-            Key::Char('W') => transform.position += Vector3::new(0., 0., -0.5),
-            Key::Char('S') => transform.position += Vector3::new(0., 0., 0.5),
             Key::Char('A') => transform.position += Vector3::new(-0.5, 0., 0.),
+            Key::Char('d') => transform.position += Vector3::new(0.1, 0., 0.),
             Key::Char('D') => transform.position += Vector3::new(0.5, 0., 0.),
 
             // Rotation
